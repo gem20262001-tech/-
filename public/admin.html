@@ -1,0 +1,45 @@
+<!DOCTYPE html><html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="robots" content="noindex"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&family=Onest:wght@400;500;600&display=swap"><link rel="stylesheet" href="/style.css"><title>Админ</title></head><body>
+<div id="login" class="wrap" hidden><div class="mosaic"></div><h1 style="margin-top:24px">Админ панел</h1><form id="login-form" class="card" style="margin-top:16px"><label for="l-phone">Телефон / логин</label><input id="l-phone" autocomplete="username"><label for="l-pass">Парол</label><input id="l-pass" type="password" autocomplete="current-password"><p class="err" id="login-err" role="alert"></p><button class="btn" type="submit">Кириш</button></form></div>
+<div id="root" hidden><div class="mosaic"></div><div class="wrap">
+<header><h1>Админ панел</h1><button class="ghost" onclick="logout()">Чиқиш</button></header>
+<div class="stats" id="stats"></div>
+<h2>Созламалар</h2>
+<div class="card"><div class="f2"><div><label for="s-fee">Етказиш нархи (₸)</label><input id="s-fee" type="number" min="0"></div><div><label for="s-kaspi">Kaspi телефон (тўлов учун)</label><input id="s-kaspi" placeholder="+7 7__ ___ __ __"></div></div><button class="btn" style="margin-top:10px" id="s-save">Сақлаш</button> <span id="s-msg" class="ok"></span></div>
+<h2>Заведениялар</h2>
+<div class="card"><b>Янги заведение</b><div class="f2"><div><label for="v-type">Тури</label><select id="v-type"><option value="fast">Фастфуд</option><option value="shop">Дўкон</option></select></div><div><label for="v-name">Номи</label><input id="v-name"></div><div><label for="v-emoji">Эмодзи</label><input id="v-emoji" value="🍽️"></div><div><label for="v-comm">Комиссия (%)</label><input id="v-comm" type="number" min="0" max="50" value="10"></div><div><label for="v-addr">Манзил</label><input id="v-addr"></div><div></div><div><label for="v-phone">Эгасининг логини (телефон)</label><input id="v-phone"></div><div><label for="v-pass">Эгасининг пароли (6+)</label><input id="v-pass" type="text"></div></div><p class="err" id="v-err" role="alert"></p><button class="btn" id="v-add">Заведение қўшиш</button></div>
+<div id="vendors"></div>
+<h2>Курьерлар</h2>
+<div class="card"><div class="f2"><div><label for="c-name">Исми</label><input id="c-name"></div><div><label for="c-phone">Телефон (логин)</label><input id="c-phone"></div><div><label for="c-pass">Парол (6+)</label><input id="c-pass"></div></div><p class="err" id="c-err" role="alert"></p><button class="btn" id="c-add">Курьер қўшиш</button></div>
+<div id="couriers"></div>
+<h2>Буюртмалар</h2><div id="orders"></div>
+</div></div>
+<script src="/common.js"></script>
+<script>
+function wrap(fn){return async function(){try{await fn.apply(null,arguments)}catch(e){alert(e.message)}}}
+async function stats(){var s=await api("/admin/stats");$("stats").innerHTML='<div class="card"><b>'+s.orders+'</b>етказилган буюртма</div><div class="card"><b>'+fmt(s.turnover)+'</b>айланма</div><div class="card"><b>'+fmt(s.commission)+'</b>сизнинг комиссиянгиз</div>'}
+async function settings(){var s=await api("/admin/settings");$("s-fee").value=s.delivery_fee;$("s-kaspi").value=s.kaspi_phone}
+async function vendors(){var v=await api("/admin/vendors"),h="";
+  v.forEach(function(x){h+='<div class="card"><div class="line"><b>'+esc(x.emoji)+' '+esc(x.name)+'</b><span>'+(x.type==="fast"?"Фастфуд":"Дўкон")+' · '+(x.open?'<span class="ok">очиқ</span>':'ёпиқ')+'</span></div><div class="meta">Эгаси: '+esc(x.owner_phone)+' · '+esc(x.address)+'</div><div class="actions"><input type="number" min="0" max="50" value="'+x.commission+'" id="cm'+x.id+'" aria-label="Комиссия %" style="max-width:90px"><button class="ghost" data-a="comm" data-id="'+x.id+'">Комиссияни сақлаш</button><button class="ghost" data-a="open" data-id="'+x.id+'" data-v="'+(x.open?0:1)+'">'+(x.open?'Ёпиш':'Очиш')+'</button><button class="danger" data-a="del" data-id="'+x.id+'">Ўчириш</button></div></div>'});
+  $("vendors").innerHTML=h}
+async function couriers(){var c=await api("/admin/couriers"),h="";
+  c.forEach(function(x){h+='<div class="line"><span>'+esc(x.name)+' · '+esc(x.phone)+'</span><button class="ghost" data-a="cact" data-id="'+x.id+'" data-v="'+(x.active?0:1)+'">'+(x.active?'Ўчириб қўйиш':'Ёқиш')+'</button></div>'});
+  $("couriers").innerHTML=h||'<p class="meta">Ҳали курьер йўқ.</p>'}
+async function orders(){var o=await api("/admin/orders"),h="";
+  o.forEach(function(x){h+='<div class="card"><div class="line"><b>#'+esc(x.code)+' · '+esc(x.vendor_name)+'</b><span>'+badge(x.status)+'</span></div>'+orderBody(x)+'<div class="line"><span>Жами '+fmt(x.total)+' · комиссия '+fmt(x.commission)+' · '+(x.pay_method==="kaspi"?"Kaspi":"нақд")+' · '+(x.pay_status==="paid"?'<span class="ok">тўланган</span>':'тўланмаган')+(x.courier_name?' · курьер: '+esc(x.courier_name):'')+'</span></div><div class="actions"><button class="ghost" data-a="pay" data-id="'+x.id+'" data-v="'+(x.pay_status==="paid"?"unpaid":"paid")+'">'+(x.pay_status==="paid"?'Тўланмаган деб белгилаш':'Тўланган деб белгилаш')+'</button>'+(x.status!=="delivered"&&x.status!=="cancelled"?'<button class="danger" data-a="cancel" data-id="'+x.id+'">Бекор қилиш</button>':'')+'</div></div>'});
+  $("orders").innerHTML=h||'<p class="meta">Ҳали буюртма йўқ.</p>'}
+function all(){stats();orders()}
+document.addEventListener("click",wrap(async function(e){var b=e.target.closest("button[data-a]");if(!b)return;var d=b.dataset,id=d.id;
+  if(d.a==="comm")await api("/admin/vendors/"+id,{method:"PATCH",body:{commission:$("cm"+id).value}});
+  if(d.a==="open")await api("/admin/vendors/"+id,{method:"PATCH",body:{open:+d.v}});
+  if(d.a==="del"){if(!confirm("Ўчирилсинми?"))return;await api("/admin/vendors/"+id,{method:"DELETE"})}
+  if(d.a==="cact"){await api("/admin/couriers/"+id,{method:"PATCH",body:{active:+d.v}});return couriers()}
+  if(d.a==="pay"){await api("/admin/orders/"+id,{method:"PATCH",body:{pay_status:d.v}});return orders()}
+  if(d.a==="cancel"){if(!confirm("Буюртма бекор қилинсинми?"))return;await api("/admin/orders/"+id,{method:"PATCH",body:{status:"cancelled"}});return all()}
+  vendors()}));
+panel("admin","Админ",function(){
+  settings();vendors();couriers();all();setInterval(all,15000);
+  $("s-save").onclick=wrap(async function(){await api("/admin/settings",{method:"PUT",body:{delivery_fee:$("s-fee").value,kaspi_phone:$("s-kaspi").value}});$("s-msg").textContent="Сақланди";setTimeout(function(){$("s-msg").textContent=""},2000)});
+  $("v-add").onclick=async function(){$("v-err").textContent="";try{await api("/admin/vendors",{method:"POST",body:{type:$("v-type").value,name:$("v-name").value,emoji:$("v-emoji").value,commission:$("v-comm").value,address:$("v-addr").value,owner_phone:$("v-phone").value,owner_password:$("v-pass").value}});["v-name","v-addr","v-phone","v-pass"].forEach(function(i){$(i).value=""});vendors()}catch(x){$("v-err").textContent=x.message}};
+  $("c-add").onclick=async function(){$("c-err").textContent="";try{await api("/admin/couriers",{method:"POST",body:{name:$("c-name").value,phone:$("c-phone").value,password:$("c-pass").value}});["c-name","c-phone","c-pass"].forEach(function(i){$(i).value=""});couriers()}catch(x){$("c-err").textContent=x.message}};
+});
+</script></body></html>

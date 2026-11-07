@@ -1,0 +1,25 @@
+<!DOCTYPE html><html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="robots" content="noindex"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&family=Onest:wght@400;500;600&display=swap"><link rel="stylesheet" href="/style.css"><title>Курьер</title></head><body>
+<div id="login" class="wrap" hidden><div class="mosaic"></div><h1 style="margin-top:24px">Курьер</h1><form id="login-form" class="card" style="margin-top:16px"><label for="l-phone">Телефон / логин</label><input id="l-phone" autocomplete="username"><label for="l-pass">Парол</label><input id="l-pass" type="password" autocomplete="current-password"><p class="err" id="login-err" role="alert"></p><button class="btn" type="submit">Кириш</button></form></div>
+<div id="root" hidden><div class="mosaic"></div><div class="wrap">
+<header><div><h1>Курьер</h1><p class="sub" id="today"></p></div><button class="ghost" onclick="logout()">Чиқиш</button></header>
+<h2>Менинг буюртмаларим</h2><div id="mine"></div>
+<h2>Бўш буюртмалар</h2><div id="free"></div>
+</div></div>
+<script src="/common.js"></script>
+<script>
+function wrap(fn){return async function(){try{await fn.apply(null,arguments)}catch(e){alert(e.message);load()}}}
+function card(x,mine){return '<div class="card"><div class="line"><b>#'+esc(x.code)+' · '+esc(x.vendor_name)+'</b><span>'+badge(x.status)+'</span></div><div class="meta">Олиш манзили: '+esc(x.vendor_address||"—")+'</div>'+orderBody(x)+
+  '<div class="line"><span>Мижоздан: '+(x.pay_status==="paid"?'<span class="ok">тўланган, пул олманг</span>':'<b>'+fmt(x.total)+'</b> нақд')+' · етказиш ҳақи '+fmt(x.delivery_fee)+'</span></div><div class="actions">'+
+  (!mine?'<button class="btn" data-a="take" data-id="'+x.id+'">Олиш</button>':'')+
+  (mine&&x.status==="ready"?'<button class="btn" data-a="picked" data-id="'+x.id+'">Заведениедан олдим</button>':'')+
+  (mine&&x.status==="picked"?'<button class="btn" data-a="delivered" data-id="'+x.id+'" data-cash="'+(x.pay_method==="cash"&&x.pay_status!=="paid"?1:0)+'">Етказдим</button>':'')+'</div></div>'}
+async function load(){var d=await api("/courier/orders");
+  $("today").textContent="Бугун: "+d.done_today.n+" та буюртма · "+fmt(d.done_today.earned)+" етказиш ҳақи";
+  $("mine").innerHTML=d.mine.map(function(x){return card(x,true)}).join("")||'<p class="meta">Ҳозирча йўқ.</p>';
+  $("free").innerHTML=d.available.map(function(x){return card(x,false)}).join("")||'<p class="meta">Бўш буюртма йўқ.</p>'}
+document.addEventListener("click",wrap(async function(e){var b=e.target.closest("button[data-a]");if(!b)return;var d=b.dataset;
+  if(d.a==="take")await api("/courier/orders/"+d.id+"/take",{method:"POST"});
+  else await api("/courier/orders/"+d.id,{method:"PATCH",body:{status:d.a,paid_cash:d.cash==="1"}});
+  load()}));
+panel("courier","Курьер",function(){load();setInterval(load,8000)});
+</script></body></html>

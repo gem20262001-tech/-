@@ -1,0 +1,101 @@
+<!DOCTYPE html><html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Сайрам доставка</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&family=Onest:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="stylesheet" href="/style.css"></head><body>
+<div class="mosaic"></div>
+<div class="wrap">
+<header><div><h1 id="t-title"></h1><p class="sub" id="t-sub"></p></div>
+<div class="lang" role="group" aria-label="Тил / Язык"><button data-l="uz">Ўзб</button><button data-l="kk">Қаз</button><button data-l="ru">Рус</button></div></header>
+<main id="app"></main>
+</div>
+<div class="bar"><button id="open-cart" disabled><span id="bar-l"></span><span id="bar-r"></span></button></div>
+<dialog id="dlg">
+<div id="form-view">
+<h2 id="t-cart"></h2><div id="cart-lines"></div>
+<div class="line sum"><span id="t-deliv"></span><span id="deliv"></span></div>
+<div class="line sum"><span id="t-total"></span><span id="total"></span></div>
+<label for="f-name" id="l-name"></label><input id="f-name" autocomplete="name">
+<label for="f-phone" id="l-phone"></label><input id="f-phone" type="tel" inputmode="tel" placeholder="+7 7__ ___ __ __" autocomplete="tel">
+<label for="f-addr" id="l-addr"></label><input id="f-addr" autocomplete="street-address">
+<label id="l-map"></label><div id="map"></div><button class="ghost" type="button" id="geo" style="margin-top:6px"></button>
+<label for="f-note" id="l-note"></label><textarea id="f-note" rows="2"></textarea>
+<label id="l-pay"></label>
+<label style="font-weight:400"><input type="radio" name="pay" value="cash" checked> <span id="p-cash"></span></label>
+<label style="font-weight:400"><input type="radio" name="pay" value="kaspi" id="r-kaspi"> <span id="p-kaspi"></span></label>
+<p class="err" id="err" role="alert"></p>
+<div class="actions"><button class="ghost" id="close" type="button"></button><button class="btn" id="send" type="button"></button></div>
+</div>
+<div id="done-view" class="done" hidden>
+<h2 id="t-ok"></h2><p><b id="ok-num" style="font:800 28px Unbounded,Onest,sans-serif;color:var(--tile)"></b></p><p id="ok-text"></p><div class="note" id="ok-kaspi" hidden></div>
+<div class="actions"><button class="btn" id="done-close" type="button"></button></div>
+</div>
+</dialog>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="/common.js"></script>
+<script>
+var DEL=500,KASPI="",CENTER=[42.3,69.77];
+var I={
+uz:{title:"Сайрам доставка",sub:"Овқат ва дўкон маҳсулотлари уйингизгача етказилади.",fast:"Фастфуд",shop:"Дўконлар",cart:"Сават",deliv:"Етказиш",total:"Жами",name:"Исмингиз",phone:"Телефон",addr:"Манзил (кўча, уй)",note:"Изоҳ (ихтиёрий)",map:"Харитада жойни белгиланг",geo:"Менинг жойим",pay:"Тўлов усули",cash:"Курьерга нақд пул",kaspi:"Kaspi орқали ўтказма",send:"Буюртма бериш",close:"Ёпиш",view:"Саватни кўриш",empty:"Сават бўш",okt:"Буюртма қабул қилинди",okx:"Буюртма рақами сақлаб қўйинг. Ҳолати пастда кўринади.",orders:"Менинг буюртмаларим",e1:"Исмингизни ёзинг.",e2:"Телефон рақамини тўлиқ ёзинг.",e3:"Манзилни ёзинг.",ok:"Яхши",items:"та",back:"← Орқага",none:"Бу ерда ҳали ҳеч нарса йўқ.",add:"+ Саватга",kp:"Kaspi орқали шу рақамга ўтказинг: ",kp2:". Тўлов тушгач, заведение тасдиқлайди.",load:"Юкланмоқда…",fail:"Сервер билан алоқа йўқ. Кейинроқ уриниб кўринг.",
+ st:{new:"Янги",accepted:"Қабул қилинди",ready:"Тайёр, курьер кутилмоқда",picked:"Йўлда",delivered:"Етказилди",cancelled:"Бекор қилинди"}},
+kk:{title:"Сайрам жеткізу",sub:"Тамақ пен дүкен тауарлары үйіңізге жеткізіледі.",fast:"Фастфуд",shop:"Дүкендер",cart:"Себет",deliv:"Жеткізу",total:"Барлығы",name:"Атыңыз",phone:"Телефон",addr:"Мекенжай (көше, үй)",note:"Ескертпе (міндетті емес)",map:"Картада орынды белгілеңіз",geo:"Менің орным",pay:"Төлем тәсілі",cash:"Курьерге қолма-қол ақша",kaspi:"Kaspi арқылы аударым",send:"Тапсырыс беру",close:"Жабу",view:"Себетті ашу",empty:"Себет бос",okt:"Тапсырыс қабылданды",okx:"Тапсырыс нөмірін сақтаңыз. Күйі төменде көрінеді.",orders:"Менің тапсырыстарым",e1:"Атыңызды жазыңыз.",e2:"Телефон нөмірін толық жазыңыз.",e3:"Мекенжайды жазыңыз.",ok:"Жақсы",items:"дана",back:"← Артқа",none:"Мұнда әзірге ештеңе жоқ.",add:"+ Себетке",kp:"Kaspi арқылы осы нөмірге аударыңыз: ",kp2:". Төлем түскен соң мекеме растайды.",load:"Жүктелуде…",fail:"Сервермен байланыс жоқ. Кейінірек қайталаңыз.",
+ st:{new:"Жаңа",accepted:"Қабылданды",ready:"Дайын, курьер күтілуде",picked:"Жолда",delivered:"Жеткізілді",cancelled:"Бас тартылды"}},
+ru:{title:"Сайрам доставка",sub:"Еда и товары из магазинов с доставкой до двери.",fast:"Фастфуд",shop:"Магазины",cart:"Корзина",deliv:"Доставка",total:"Итого",name:"Ваше имя",phone:"Телефон",addr:"Адрес (улица, дом)",note:"Комментарий (необязательно)",map:"Отметьте место на карте",geo:"Моё местоположение",pay:"Способ оплаты",cash:"Наличными курьеру",kaspi:"Перевод через Kaspi",send:"Оформить заказ",close:"Закрыть",view:"Открыть корзину",empty:"Корзина пуста",okt:"Заказ принят",okx:"Сохраните номер заказа. Статус виден ниже.",orders:"Мои заказы",e1:"Введите имя.",e2:"Введите номер телефона полностью.",e3:"Введите адрес.",ok:"Понятно",items:"шт.",back:"← Назад",none:"Здесь пока ничего нет.",add:"+ В корзину",kp:"Переведите через Kaspi на номер: ",kp2:". Заведение подтвердит оплату.",load:"Загрузка…",fail:"Нет связи с сервером. Попробуйте позже.",
+ st:{new:"Новый",accepted:"Принят",ready:"Готов, ждём курьера",picked:"В пути",delivered:"Доставлен",cancelled:"Отменён"}}};
+var lang=localStorage.getItem("lang")||"uz",cat="fast",vendors=[],prods=[],cur=null,cart={},pin=null,map=null,mark=null;
+var mine=[];try{mine=JSON.parse(localStorage.getItem("my_orders")||"[]")}catch(e){}
+if(!I[lang])lang="uz";
+function sub(){var s=0;prods.forEach(function(p){s+=(cart[p.id]||0)*p.price});return s}
+function count(){var n=0;for(var k in cart)n+=cart[k];return n}
+async function home(){cur=null;try{vendors=await api("/vendors")}catch(e){$("app").innerHTML='<p class="err">'+I[lang].fail+'</p>';return}render()}
+async function openVendor(id){cur=vendors.filter(function(v){return v.id===id})[0];if(!cur)return;
+  cart={};try{prods=await api("/vendors/"+id+"/products")}catch(e){prods=[]}render();window.scrollTo(0,0)}
+function render(){var T=I[lang],h="";document.documentElement.lang=lang;
+  $("t-title").textContent=T.title;$("t-sub").textContent=T.sub;
+  document.querySelectorAll(".lang button").forEach(function(b){b.setAttribute("aria-pressed",b.dataset.l===lang)});
+  if(!cur){h+='<div class="tabs" role="tablist"><button role="tab" data-c="fast" aria-selected="'+(cat==="fast")+'">'+T.fast+'</button><button role="tab" data-c="shop" aria-selected="'+(cat==="shop")+'">'+T.shop+'</button></div><div class="grid">';
+    var vs=vendors.filter(function(v){return v.type===cat});
+    vs.forEach(function(v){h+='<button class="vend" data-v="'+v.id+'"><span class="emoji" aria-hidden="true">'+esc(v.emoji)+'</span><b>'+esc(v.name)+'</b><small class="meta">'+esc(v.address)+'</small></button>'});
+    h+='</div>'+(vs.length?'':'<p class="meta">'+T.none+'</p>');
+    if(mine.length){h+='<h2>'+T.orders+'</h2><div id="mine"></div>'}
+  }else{h+='<button class="back" data-back="1">'+T.back+'</button><h2>'+esc(cur.emoji)+' '+esc(cur.name)+'</h2><div class="grid">';
+    prods.forEach(function(p){var q=cart[p.id]||0;
+      h+='<div class="item"><h3>'+esc(p.name)+'</h3><div class="meta">'+esc(p.unit)+'</div><div class="row"><span class="price">'+fmt(p.price)+'</span>'+(q?'<span class="qty"><button data-d="-1" data-i="'+p.id+'" aria-label="−">−</button><b>'+q+'</b><button data-d="1" data-i="'+p.id+'" aria-label="+">+</button></span>':'<button class="add" data-d="1" data-i="'+p.id+'">'+T.add+'</button>')+'</div></div>'});
+    h+='</div>'+(prods.length?'':'<p class="meta">'+T.none+'</p>')}
+  $("app").innerHTML=h;var n=count();$("open-cart").disabled=!n;
+  $("bar-l").textContent=n?T.view+" · "+n+" "+T.items:T.empty;$("bar-r").textContent=n?fmt(sub()+DEL):"";
+  if(!cur&&mine.length)refreshMine()}
+async function refreshMine(){var T=I[lang],h="";
+  for(var o of mine.slice(0,5)){try{var d=await api("/track?code="+o.code+"&phone="+encodeURIComponent(o.phone));h+='<div class="line"><span>#'+esc(d.code)+' · '+esc(d.vendor)+'</span><span>'+esc(T.st[d.status]||d.status)+' · '+fmt(d.total)+'</span></div>'}catch(e){}}
+  if($("mine"))$("mine").innerHTML=h}
+document.addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;var D=b.dataset;
+  if(D.l){lang=D.l;localStorage.setItem("lang",lang);render()}
+  else if(D.c){cat=D.c;render()}
+  else if(D.v)openVendor(+D.v);
+  else if(D.back){home()}
+  else if(D.i&&D.d){var id=+D.i;cart[id]=Math.max(0,(cart[id]||0)+(+D.d));if(!cart[id])delete cart[id];render()}});
+function fill(){var T=I[lang];$("t-cart").textContent=T.cart+(cur?" · "+cur.name:"");
+  $("cart-lines").innerHTML=prods.filter(function(p){return cart[p.id]}).map(function(p){return '<div class="line"><span>'+esc(p.name)+' × '+cart[p.id]+'</span><span>'+fmt(p.price*cart[p.id])+'</span></div>'}).join("");
+  $("t-deliv").textContent=T.deliv;$("deliv").textContent=fmt(DEL);$("t-total").textContent=T.total;$("total").textContent=fmt(sub()+DEL);
+  [["l-name","name"],["l-phone","phone"],["l-addr","addr"],["l-note","note"],["l-map","map"],["l-pay","pay"],["p-cash","cash"],["p-kaspi","kaspi"],["geo","geo"],["send","send"],["close","close"]].forEach(function(x){$(x[0]).textContent=T[x[1]]});
+  $("r-kaspi").parentElement.hidden=!KASPI;$("err").textContent=""}
+function setPin(ll){pin=ll;if(!map)return;if(mark)mark.setLatLng(ll);else mark=L.marker(ll).addTo(map);map.setView(ll,16)}
+function initMap(){if(typeof L==="undefined"){$("map").hidden=true;$("geo").hidden=true;return}
+  if(!map){map=L.map("map").setView(CENTER,13);L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);
+    map.on("click",function(e){setPin(e.latlng)})}
+  setTimeout(function(){map.invalidateSize()},50)}
+$("geo").onclick=function(){if(!navigator.geolocation)return;navigator.geolocation.getCurrentPosition(function(p){setPin({lat:p.coords.latitude,lng:p.coords.longitude})},function(){})};
+$("open-cart").onclick=function(){fill();$("form-view").hidden=false;$("done-view").hidden=true;$("dlg").showModal();initMap()};
+$("close").onclick=$("done-close").onclick=function(){$("dlg").close();if($("done-view").hidden===false)home()};
+$("send").onclick=async function(){var T=I[lang],name=$("f-name").value.trim(),ph=$("f-phone").value.replace(/\D/g,""),ad=$("f-addr").value.trim();
+  if(!name){$("err").textContent=T.e1;return}if(ph.length<10){$("err").textContent=T.e2;return}if(!ad){$("err").textContent=T.e3;return}
+  $("send").disabled=true;
+  try{var pm=document.querySelector("input[name=pay]:checked").value;
+    var d=await api("/orders",{method:"POST",body:{vendor_id:cur.id,name:name,phone:$("f-phone").value,address:ad,note:$("f-note").value,pay_method:pm,lat:pin&&pin.lat,lng:pin&&pin.lng,
+      items:Object.keys(cart).map(function(k){return{id:+k,qty:cart[k]}})}});
+    mine.unshift({code:d.code,phone:$("f-phone").value});mine=mine.slice(0,10);localStorage.setItem("my_orders",JSON.stringify(mine));cart={};
+    $("form-view").hidden=true;$("done-view").hidden=false;$("t-ok").textContent=T.okt;$("ok-num").textContent="#"+d.code;$("ok-text").textContent=T.okx;$("done-close").textContent=T.ok;
+    $("ok-kaspi").hidden=!d.kaspi_phone;if(d.kaspi_phone)$("ok-kaspi").textContent=T.kp+d.kaspi_phone+" ("+fmt(d.total)+")"+T.kp2;
+  }catch(x){$("err").textContent=x.message}$("send").disabled=false};
+(async function(){try{var c=await api("/config");DEL=c.delivery_fee;KASPI=c.kaspi_phone}catch(e){}home();setInterval(function(){if(!cur&&mine.length)refreshMine()},20000)})();
+</script></body></html>
